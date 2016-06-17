@@ -32,7 +32,11 @@ namespace Module
 		class ThreadObject;
 		class Mutex;
 	class Extension;
-	//class NetworkInterface;
+  /*
+	class NetworkInterface;
+		class Server;
+		class Client; 
+  */
 }
 
 namespace eastl{
