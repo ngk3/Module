@@ -162,7 +162,10 @@ int main(int argc, char ** argv)
 	
 	signal(SIGINT, sigterm_handler);
 	unsigned long millisStart = game.getMilliseconds();
-	
+	// Create input queue:
+	Module::NetClient client;
+	client.connectTCP(127,0,0,1,8888, 10, 1000); // blocking call: client connect to server and try for 10 times, timeout 1000 ms, throw exception if failed
+	Module::InputQueue *inputQ = client.getQ(); // redirect client buffer queue to InputQueue of the program
 	while (game.isRunning())
 	{
 		unsigned long millis = game.getMilliseconds() - millisStart;
@@ -186,6 +189,23 @@ int main(int argc, char ** argv)
 		
 		playerObject->setPosition(Module::Vector3(input.posX / 30.0f, 0.0f, input.posY / 30.0f) +
 			cubeForward * -0.5f + cubeUp * -0.5f + cubeRight * -0.5f);
+		/*
+			networking part:
+			vector<long> message = inputQ->pop(); // get the latest event from input events
+			if (message != NULL){
+				rotX = message[0]; rotY = message[1]
+				Module::Quaternion cubeRot = playerObject->getRotation();
+				cubeRot = Module::Quaternion(Module::Vector3(1,0,0), MATH_PI * input.rotY / 180.0f) * cubeRot;
+				cubeRot = Module::Quaternion(Module::Vector3(0,0,1), MATH_PI * -input.rotX / 180.0f) * cubeRot;
+				playerObject->setRotation(cubeRot);
+				Module::Vector3 cubeForward = Module::Vector3(1,0,0).rotate(cubeRot);
+				Module::Vector3 cubeUp = Module::Vector3(0,1,0).rotate(cubeRot);
+				Module::Vector3 cubeRight = Module::Vector3(0,0,1).rotate(cubeRot);						
+				input.rotX = 0;
+				input.rotY = 0;						
+				playerObject->setPosition(Module::Vector3(input.posX / 30.0f, 0.0f, input.posY / 30.0f) + cubeForward * -0.5f + cubeUp * -0.5f + cubeRight * -0.5f);
+			}
+		*/
 	}
 	
 	return 0;

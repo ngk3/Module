@@ -121,8 +121,8 @@ int NetworkConnection::ReceivePacket( unsigned char data[], int size )
 			state = Connected;
 		}
 		timeoutAccumulator = 0.0f;
-		memcpy( data, &packet[4], size - 4 );
-		return size - 4;
+		memcpy( data, &packet[4], size);
+		return size;
 	}
 	return 0;
 }
