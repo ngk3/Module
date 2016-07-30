@@ -1,11 +1,16 @@
-#include "NetworkChannel.cpp"
-#include <iostream>
-#include <cstdlib>
-#include <pthread.h>
-#include <unistd.h>
-#include <sstream>
-using namespace std;
 
+#include "NetworkChannel.cpp"
+using namespace std;
+void *start_inchan(void *t){
+	InputQueue* q = (InputQueue*) t;	
+	std::cout << "inchan started" << std::endl;
+	// for (int i = 0; i < 1000; i++){
+	// 	q->push("test" + static_cast<ostringstream*>( &(ostringstream() << i) )->str());
+	// 	usleep(100);
+	// }
+	net_inchan(3000, PROTOCOL_ID, 0.001f, TIMEOUT, 15, q);
+	pthread_exit(NULL);
+}
 void *start_outchan(void *t){
 	InputQueue* q = (InputQueue*) t;	
 	std::cout << "outchan started" << std::endl;
@@ -26,22 +31,11 @@ void produce_outchan(InputQueue* queue){
 	}
 }
 
-int main( int argc, char * argv[] )
-{
-	InputQueue* queue = new InputQueue();
-	int rc;
-	pthread_t threads[1];
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-	std::cout << "Starting threads" << std::endl;
-	rc = pthread_create(&threads[0], NULL, start_outchan, (void *) queue);
-	if (rc){
-		std::cout << "Error: Unable to create thread" << std::endl;
-		exit(-1);
+void consume_inchan(InputQueue* queue){
+	int counter = 0;
+	while (counter < 1000){
+		std::cout << queue->pop() << std::endl;
+		usleep(0);
+		counter += 1;
 	}
-	produce_outchan(queue);
-	pthread_join(threads[0], NULL);
-	delete queue;
-	return 0;
 }

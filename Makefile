@@ -1,6 +1,6 @@
 EASTL := lib/EASTL
 EASTL_LINK     := -lEASTL
-EASTL_LIB      := 
+EASTL_LIB      := $(EASTL)/build/mingw-w64
 EASTL_TEST_INC := -I$(EASTL)/test/packages/EABase/include/Common
 # $(addprefix -I, $(wildcard $(EASTL)/test/packages/*/include))
 EASTL_INC      := -I$(EASTL)/include $(EASTL_TEST_INC)
@@ -18,7 +18,7 @@ SOIL = lib/SOIL
 LIBS 			:= -lalut -lSDL2main -lSDL2 -lSOIL $(EASTL_LINK)
 LIB_INC_PATHS 		:= -I$(GLEW)/include -I$(SDL2)/include -I$(GLM) -I$(BULLET)/src -I$(OPENAL_SOFT)/include -I$(FREEALUT)/include -I$(SOIL)/src $(EASTL_INC)
 LIB_INC_PATHS_32 	:= -I$(GLEW)/include -I$(SDL2_32)/include -I$(GLM) -I$(BULLET)/src -I$(OPENAL_SOFT)/include -I$(FREEALUT)/include -I$(SOIL)/src $(EASTL_INC)
-LIB_PATHS		:= -L$(FREEALUT)/lib
+LIB_PATHS		:= -L$(FREEALUT)/lib -L$(EASTL_LIB)
 LIB_PATHS32		:=
 
 

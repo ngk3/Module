@@ -12,7 +12,7 @@
 #include <queue>
 
 #include "NetworkInterface.hpp"
-#include <list>
+#include <queue>
 #include <pthread.h>
 
 using namespace std;
@@ -24,12 +24,13 @@ const float RATE = 0.25f;
 const float TIMEOUT = 10.0f;
 const unsigned char FRAGMENT = 0x80;
 const unsigned char SUMMARY = 0x40;
-bool DEBUG = false;
+bool NC_DEBUG = false;
 
 class InputQueue
 {
 public:
-	InputQueue(){
+	InputQueue(size_t queue_size){
+		m_queue_size = queue_size;
 		pthread_mutex_init(&m_mutex, NULL);
 		pthread_cond_init(&m_condv, NULL);
 	}
@@ -43,28 +44,32 @@ public:
 	        pthread_cond_wait(&m_condv, &m_mutex);
 	    }
 	    string item = string(m_queue.front());
-	    if (DEBUG){
+	    if (NC_DEBUG){
 		    std::cout << "front poped: " << item << std::endl;
 		}
-	    m_queue.pop_front(); // bug?
+	    m_queue.pop(); // bug?
 	    pthread_mutex_unlock(&m_mutex);
 	    return item;
 	}
 
 	void push(string info){
 		pthread_mutex_lock(&m_mutex);
-		m_queue.push_back(info);
-		if (DEBUG){
+		m_queue.push(info);
+		if (NC_DEBUG){
 			std::cout << "pushed: " << info << std::endl;
+		}
+		if (m_queue.size() > m_queue_size){
+			m_queue.pop();
 		}
 	    pthread_cond_signal(&m_condv);
 	    pthread_mutex_unlock(&m_mutex);
 	}
 
-	list<string> m_queue;
+private:
+	queue<string> m_queue;
 	pthread_mutex_t m_mutex;
 	pthread_cond_t m_condv;
-
+	size_t m_queue_size;
 };
 
 void print(unsigned char *container, size_t size){
@@ -117,7 +122,7 @@ int net_inchan(int port, int ProtocolId, float DeltaTime, float TimeOut, size_t 
 			unsigned char mode = packet[0] & 0xF0;
 			unsigned char sequence = packet[0] & 0xF;
 			unsigned char* data = &packet[1];
-			if (DEBUG){
+			if (NC_DEBUG){
 				cout << "receive packet: length = " << bytes_read << ",header ( mode = " << (int)mode << ",sequence = " << (int) sequence << ",body:" << endl;
 				print(data, packet_size - 1);
 			}
@@ -145,7 +150,7 @@ int net_inchan(int port, int ProtocolId, float DeltaTime, float TimeOut, size_t 
 //			std::cout << toString(buffer, buffer_sequence*(packet_size-1)) << std::endl;
 		}
 		connection.Update( DeltaTime );
-		wait( DeltaTime );
+		Module::wait( DeltaTime );
 	}
 	delete[] buffer;
 	delete[] packet;
@@ -189,11 +194,11 @@ int net_outchan(int port, int target_port, int ProtocolId, float DeltaTime, floa
 
 		//Simple Input Messaging
 		string input_string = queue.pop();
-		if (DEBUG){
+		if (NC_DEBUG){
 			cout << "user input: " << input_string << std::endl;
 		}
 		if (input_string.empty()){
-			wait( DeltaTime );
+			Module::wait( DeltaTime );
 			continue;
 		}
 
@@ -210,7 +215,7 @@ int net_outchan(int port, int target_port, int ProtocolId, float DeltaTime, floa
 			packet_index ++;
 			std::memcpy(decorated+1, data+i, frame_size);
 			connection.SendPacket(decorated, packet_size+1);
-			if (DEBUG){
+			if (NC_DEBUG){
 				print(decorated, packet_size+1);
 			}
 		}
@@ -221,7 +226,7 @@ int net_outchan(int port, int target_port, int ProtocolId, float DeltaTime, floa
 		connection.SendPacket(decorated, packet_size+1); // send a end of current packet 
 		delete[] decorated;
 		connection.Update( DeltaTime );
-		wait( DeltaTime );
+		Module::wait( DeltaTime );
 	}
 	
 	ShutdownSockets();

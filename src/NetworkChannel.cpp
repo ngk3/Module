@@ -24,7 +24,7 @@ const float RATE = 0.25f;
 const float TIMEOUT = 10.0f;
 const unsigned char FRAGMENT = 0x80;
 const unsigned char SUMMARY = 0x40;
-bool DEBUG = false;
+bool NC_DEBUG = false;
 
 class InputQueue
 {
@@ -43,7 +43,7 @@ public:
 	        pthread_cond_wait(&m_condv, &m_mutex);
 	    }
 	    string item = string(m_queue.front());
-	    if (DEBUG){
+	    if (NC_DEBUG){
 		    std::cout << "front poped: " << item << std::endl;
 		}
 	    m_queue.pop_front(); // bug?
@@ -54,7 +54,7 @@ public:
 	void push(string info){
 		pthread_mutex_lock(&m_mutex);
 		m_queue.push_back(info);
-		if (DEBUG){
+		if (true){
 			std::cout << "pushed: " << info << std::endl;
 		}
 	    pthread_cond_signal(&m_condv);
@@ -117,7 +117,7 @@ int net_inchan(int port, int ProtocolId, float DeltaTime, float TimeOut, size_t 
 			unsigned char mode = packet[0] & 0xF0;
 			unsigned char sequence = packet[0] & 0xF;
 			unsigned char* data = &packet[1];
-			if (DEBUG){
+			if (NC_DEBUG){
 				cout << "receive packet: length = " << bytes_read << ",header ( mode = " << (int)mode << ",sequence = " << (int) sequence << ",body:" << endl;
 				print(data, packet_size - 1);
 			}
@@ -145,7 +145,7 @@ int net_inchan(int port, int ProtocolId, float DeltaTime, float TimeOut, size_t 
 //			std::cout << toString(buffer, buffer_sequence*(packet_size-1)) << std::endl;
 		}
 		connection.Update( DeltaTime );
-		wait( DeltaTime );
+		Module::wait( DeltaTime );
 	}
 	delete[] buffer;
 	delete[] packet;
@@ -189,11 +189,11 @@ int net_outchan(int port, int target_port, int ProtocolId, float DeltaTime, floa
 
 		//Simple Input Messaging
 		string input_string = queue.pop();
-		if (DEBUG){
+		if (NC_DEBUG){
 			cout << "user input: " << input_string << std::endl;
 		}
 		if (input_string.empty()){
-			wait( DeltaTime );
+			Module::wait( DeltaTime );
 			continue;
 		}
 
@@ -210,7 +210,7 @@ int net_outchan(int port, int target_port, int ProtocolId, float DeltaTime, floa
 			packet_index ++;
 			std::memcpy(decorated+1, data+i, frame_size);
 			connection.SendPacket(decorated, packet_size+1);
-			if (DEBUG){
+			if (NC_DEBUG){
 				print(decorated, packet_size+1);
 			}
 		}
@@ -221,7 +221,7 @@ int net_outchan(int port, int target_port, int ProtocolId, float DeltaTime, floa
 		connection.SendPacket(decorated, packet_size+1); // send a end of current packet 
 		delete[] decorated;
 		connection.Update( DeltaTime );
-		wait( DeltaTime );
+		Module::wait( DeltaTime );
 	}
 	
 	ShutdownSockets();

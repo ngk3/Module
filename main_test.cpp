@@ -2,6 +2,7 @@
 #include <cfloat>
 #include <csignal>
 #include <iostream>
+#include <iomanip>
 
 // Module includes
 #include <ModuleDefines.hpp>
@@ -16,10 +17,11 @@
 #include "InputCallback.hpp"
 #include "GraphicsCallback.hpp"
 #include "GraphicsContext.hpp"
-
+#include "NetworkIO.cpp"
 #define MATH_PI 3.14159265358979323846264
-
 // The Chopin comes from https://archive.org/details/onclassical-quality-wav-audio-files-of-classical-music
+
+bool net_as_input = false;
 
 class TestInputCallback : public Module::InputCallback
 {
@@ -91,8 +93,62 @@ void sigterm_handler(int signal)
 	}
 }
 
+string serializeDataSheet(vector<float> datasheet){
+	string result;
+	for (int i = 0; i < datasheet.size(); i++){
+		std::stringstream ss;
+		ss << std::fixed << std::setprecision(10) << datasheet[i];
+		result += ss.str();
+		if (i != datasheet.size() - 1){
+			result += ",";
+		}
+	}
+	return result;
+}
+
+vector<float> deserializeDataSheet(string datasheet){
+	istringstream ss(datasheet);
+	std::string token;
+	vector<float> result;
+	while (std::getline(ss, token, ',')){
+		result.push_back(atof(token.c_str()));
+	}
+	return result;
+}
+
 int main(int argc, char ** argv)
 {
+	if (argc != 2){
+		cout << "required: ./main_test <net_as_input? t : f>" << endl;
+		return -1;
+	}else{
+		if (strcmp( argv[1], "t") == 0 ){
+			net_as_input = true;
+		}else if (strcmp( argv[1], "f") == 0){
+			net_as_input = false;
+		}else{
+			cout << argv[1] << std::endl;
+			return -1;
+		}
+	}
+	// initialize networking
+	InputQueue* queue = new InputQueue();
+	int rc;
+	pthread_t t;
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	std::cout << "Starting threads" << std::endl;
+	if (net_as_input){
+		rc = pthread_create(&t, NULL, start_inchan, (void *) queue);
+	}else{
+		rc = pthread_create(&t, NULL, start_outchan, (void *) queue);
+	}
+	if (rc){
+		std::cout << "Error: Unable to create thread" << std::endl;
+		exit(-1);
+	}
+	
 	// Create the game
 	Module::ModuleGame game;
 	
@@ -162,11 +218,8 @@ int main(int argc, char ** argv)
 	
 	signal(SIGINT, sigterm_handler);
 	unsigned long millisStart = game.getMilliseconds();
-	// Create input queue:
-	Module::NetClient client;
-	client.connectTCP(127,0,0,1,8888, 10, 1000); // blocking call: client connect to server and try for 10 times, timeout 1000 ms, throw exception if failed
-	Module::InputQueue *inputQ = client.getQ(); // redirect client buffer queue to InputQueue of the program
-	while (game.isRunning())
+	uint16_t counter = 0;
+	while (game.isRunning() and !halted)
 	{
 		unsigned long millis = game.getMilliseconds() - millisStart;
 		for (unsigned int i = 0; i < objects.size(); i++)
@@ -175,38 +228,57 @@ int main(int argc, char ** argv)
 			objects[i]->setRotation(Module::Quaternion(Module::Vector3(0,1,0), std::sin(2 * MATH_PI * millis / 1000.0f) + (2 * MATH_PI * i / numObjects)));
 		}
 		
-		Module::Quaternion cubeRot = playerObject->getRotation();
-		cubeRot = Module::Quaternion(Module::Vector3(1,0,0), MATH_PI * input.rotY / 180.0f) * cubeRot;
-		cubeRot = Module::Quaternion(Module::Vector3(0,0,1), MATH_PI * -input.rotX / 180.0f) * cubeRot;
-		playerObject->setRotation(cubeRot);
-		
-		Module::Vector3 cubeForward = Module::Vector3(1,0,0).rotate(cubeRot);
-		Module::Vector3 cubeUp = Module::Vector3(0,1,0).rotate(cubeRot);
-		Module::Vector3 cubeRight = Module::Vector3(0,0,1).rotate(cubeRot);
-		
-		input.rotX = 0;
-		input.rotY = 0;
-		
-		playerObject->setPosition(Module::Vector3(input.posX / 30.0f, 0.0f, input.posY / 30.0f) +
-			cubeForward * -0.5f + cubeUp * -0.5f + cubeRight * -0.5f);
-		/*
-			networking part:
-			vector<long> message = inputQ->pop(); // get the latest event from input events
-			if (message != NULL){
-				rotX = message[0]; rotY = message[1]
-				Module::Quaternion cubeRot = playerObject->getRotation();
-				cubeRot = Module::Quaternion(Module::Vector3(1,0,0), MATH_PI * input.rotY / 180.0f) * cubeRot;
-				cubeRot = Module::Quaternion(Module::Vector3(0,0,1), MATH_PI * -input.rotX / 180.0f) * cubeRot;
-				playerObject->setRotation(cubeRot);
-				Module::Vector3 cubeForward = Module::Vector3(1,0,0).rotate(cubeRot);
-				Module::Vector3 cubeUp = Module::Vector3(0,1,0).rotate(cubeRot);
-				Module::Vector3 cubeRight = Module::Vector3(0,0,1).rotate(cubeRot);						
-				input.rotX = 0;
-				input.rotY = 0;						
-				playerObject->setPosition(Module::Vector3(input.posX / 30.0f, 0.0f, input.posY / 30.0f) + cubeForward * -0.5f + cubeUp * -0.5f + cubeRight * -0.5f);
+		counter += 1;
+		counter = counter % 1000;
+		// server simple example, server send the message, no usage of pthread
+		// serialize current rotation and current position
+		if (net_as_input){
+			if (counter == 0){
+				// receive internet 
+				string input_string = queue->pop();
+				if (input_string.empty()){
+					continue;
+				}
+				std::cout << "received: " << input_string << endl;
+				vector<float> v = deserializeDataSheet(input_string);
+				Module::Quaternion new_rot(v[0], v[1], v[2], v[3]);
+				Module::Vector3 new_pos(v[4],v[5],v[6]);
+				playerObject->setPosition(new_pos);
+				playerObject->setRotation(new_rot);
 			}
-		*/
+		}else{
+			// receive keyboard/mouse input to control this
+			Module::Quaternion cubeRot = playerObject->getRotation();
+			cubeRot = Module::Quaternion(Module::Vector3(1,0,0), MATH_PI * input.rotY / 180.0f) * cubeRot;
+			cubeRot = Module::Quaternion(Module::Vector3(0,0,1), MATH_PI * -input.rotX / 180.0f) * cubeRot;
+			playerObject->setRotation(cubeRot);			
+			Module::Vector3 cubeForward = Module::Vector3(1,0,0).rotate(cubeRot);
+			Module::Vector3 cubeUp = Module::Vector3(0,1,0).rotate(cubeRot);
+			Module::Vector3 cubeRight = Module::Vector3(0,0,1).rotate(cubeRot);
+			input.rotX = 0;
+			input.rotY = 0;
+			Module::Vector3 cubPos = Module::Vector3(input.posX / 30.0f, 0.0f, input.posY / 30.0f) +
+				cubeForward * -0.5f + cubeUp * -0.5f + cubeRight * -0.5f;
+			playerObject->setPosition(cubPos);
+			if (counter == 0){
+				// send the datasheet every 1000 frame
+				float datasheet[7];
+				datasheet[0] = cubeRot.getX();
+				datasheet[1] = cubeRot.getY();
+				datasheet[2] = cubeRot.getZ();
+				datasheet[3] = cubeRot.getW();
+				datasheet[4] = cubPos.getX();
+				datasheet[5] = cubPos.getY();
+				datasheet[6] = cubPos.getZ();
+				std::vector<float> v(datasheet, datasheet + 7);
+				string s = serializeDataSheet(v);
+				queue->push(s);
+				cout << "sent to queue: " << s << endl;
+
+			}
+		}
 	}
-	
+	pthread_cancel(t);
+	delete queue;
 	return 0;
 }

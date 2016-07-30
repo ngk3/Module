@@ -1,33 +1,41 @@
-//#ifndef __MODULE__NETWORKSOCKET_HPP__
-//#define __MODULE__NETWORKSOCKEY_HPP__
+#include <assert.h>
 
-#include "NetworkAddress.cpp"
+using namespace Module;
 
-namespace Module
-{
-
-// 
-class NetworkSocket
-{
-	friend class NetworkInterface;
-
-	private:
-		int socket;
+namespace Module {
 	
+	#if PLATFORM == PLATFORM_WINDOWS
+
+	void wait( float seconds )
+	{
+		Sleep( (int) ( seconds * 1000.0f ) );
+	}
+
+	#else
+
+	#include <unistd.h>
+	void wait( float seconds ) { usleep( (int) ( seconds * 1000000.0f ) ); }
+
+	#endif
+	
+	
+	class NetworkSocket
+	{
 	public:
-		//CONSTRUCTOR
-		NetworkSocket();
 	
-		//DESTRUCTOR
-		~NetworkSocket();
+		NetworkSocket() { socket = 0; }
+		~NetworkSocket() { Close(); }
 	
-		//FUNCTIONS
-		bool Open(unsigned short port);
+		bool Open( unsigned short port );
 		void Close();
-		bool isOpen() const;
-		bool send(const NetworkAddress& destination, const void* data, int size);
-		int receive(NetworkAddress& sender, void* data, int size);
-		
-};
 	
+		bool IsOpen() const { return socket != 0; }
+	
+		bool Send( const NetworkAddress & destination, const void * data, int size );
+		int Receive( NetworkAddress & sender, void * data, int size );
+		
+	private:
+	
+		int socket;
+	};
 }

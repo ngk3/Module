@@ -1,0 +1,33 @@
+In file included from Server.cpp:2:0,
+                 from main_test.cpp:19:
+NetworkChannel.cpp: In function ‘int net_inchan(int, int, float, float, size_t, InputQueue*)’:
+NetworkChannel.cpp:104:21: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+   for (int i = 0; i < buffer_size; i++){
+                     ^
+NetworkChannel.cpp:107:21: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+   for (int i = 0; i < packet_size; i++){
+                     ^
+In file included from Server.cpp:2:0,
+                 from main_test.cpp:19:
+NetworkChannel.cpp:127:23: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+     for (int i = 0; i < buffer_size; i++){
+                       ^
+NetworkChannel.cpp: In function ‘int net_outchan(int, int, int, float, float, size_t, InputQueue&)’:
+NetworkChannel.cpp:220:41: warning: suggest parentheses around arithmetic in operand of ‘|’ [-Wparentheses]
+   decorated[0] = SUMMARY | packet_index - 1;
+                                         ^
+In file included from NetworkInterface.hpp:37:0,
+                 from NetworkChannel.cpp:14,
+                 from Server.cpp:2,
+                 from main_test.cpp:19:
+NetworkConnection.cpp: In member function ‘bool Module::NetworkConnection::SendPacket(const unsigned char*, int)’:
+NetworkConnection.cpp:80:6: warning: stack protector not protecting local variables: variable length buffer [-Wstack-protector]
+ bool NetworkConnection::SendPacket( const unsigned char data[], int size )
+      ^
+NetworkConnection.cpp: In member function ‘int Module::NetworkConnection::ReceivePacket(unsigned char*, int)’:
+NetworkConnection.cpp:94:5: warning: stack protector not protecting local variables: variable length buffer [-Wstack-protector]
+ int NetworkConnection::ReceivePacket( unsigned char data[], int size )
+     ^
+/usr/bin/ld: cannot find -lEASTL
+collect2: error: ld returned 1 exit status
+make: *** [main_test] Error 1
