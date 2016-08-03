@@ -1,3 +1,5 @@
+
+// This class is used to store a specific address and port to connect to
 namespace Module {
 	
 	class NetworkAddress
