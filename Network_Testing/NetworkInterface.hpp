@@ -1,4 +1,6 @@
 
+// Import libraries and modules based on platform
+
 #ifndef NETWORKINTERFACE_HPP
 #define NETWORKINTERFACE_HPP
 
@@ -41,7 +43,7 @@
 
 namespace Module
 {
-
+	// initializes and shutdown functions imports needed libraries based on OS
 	inline bool InitializeSockets()
 	{
 		#if PLATFORM == PLATFORM_WINDOWS
