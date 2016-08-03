@@ -1,9 +1,12 @@
+// Customized NetworkSocket class
+
 #include <assert.h>
 
 using namespace Module;
 
 namespace Module {
 	
+	// Wait function implemented depending on platform used
 	#if PLATFORM == PLATFORM_WINDOWS
 
 	void wait( float seconds )
